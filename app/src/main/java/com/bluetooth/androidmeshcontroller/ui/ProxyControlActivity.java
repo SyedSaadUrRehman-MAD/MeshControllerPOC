@@ -174,7 +174,8 @@ public class ProxyControlActivity extends Activity {
             mesh = BluetoothMesh.getInstance();
             mesh.setContext(this);
 //            changeDst("C001");
-            changeDst("0002");
+//            changeDst("0002");
+            changeDst("C000");
             ((Button) ProxyControlActivity.this.findViewById(R.id.btn_all)).setTextColor(Color.RED);
             last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_all));
             showMsg("READY");
@@ -319,6 +320,11 @@ public class ProxyControlActivity extends Activity {
     public void onOn(View view) {
         showMsg("sending generic on off set unack (1)",5);
         mesh.sendGenericOnOffSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),(byte) 1);
+    }
+
+    public void onVendorModel(View view) {
+        showMsg("sending Vendor Model Trigger set unack (1)",5);
+        mesh.sendVendorModelSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),(byte) 1);
     }
 
     public void onOff(View view) {

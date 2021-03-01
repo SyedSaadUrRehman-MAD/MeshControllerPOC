@@ -19,13 +19,20 @@ public class BluetoothMesh {
     private int seq_number;
     private Context context;
 
-    private byte [] netkey = {(byte) (0xFF & 0xbe), (byte) (0xFF & 0x6f), 0x04, 0x28, (byte) (0xFF & 0xee), (byte) (0xFF & 0x6c), (byte) (0xFF & 0xa7), (byte) (0xFF & 0x6f), 0x39, (byte) (0xFF & 0xe7), 0x05, 0x7b, (byte) (0xFF & 0xaf), (byte) (0xFF & 0xd0), 0x72, (byte) (0xFF & 0xd0)};
+    private byte [] netkey = { 0x56, (byte) (0xFF & 0xc7), 0x69, (byte) (0xFF & 0xf8), (byte) (0xFF & 0x41), (byte) (0xFF & 0x84), (byte) (0xFF & 0x56), (byte) (0xFF & 0x74), 0x3b, (byte) (0xFF & 0xd1), 0x6f,  (byte) (0xFF & 0xdc), (byte) (0xFF & 0xe9), (byte) (0xFF & 0x31)};
+    //56C769F84F418456743BD16FDC9BE931: NETWORK KEY h22 firmware 2
+
+//    private byte [] netkey = {(byte) (0xFF & 0xbe), (byte) (0xFF & 0x6f), 0x04, 0x28, (byte) (0xFF & 0xee), (byte) (0xFF & 0x6c), (byte) (0xFF & 0xa7), (byte) (0xFF & 0x6f), 0x39, (byte) (0xFF & 0xe7), 0x05, 0x7b, (byte) (0xFF & 0xaf), (byte) (0xFF & 0xd0), 0x72, (byte) (0xFF & 0xd0)};
     //BE6F0428EE6CA76F39E7057BAFD072D0 mesh controller net key
 
 //    private byte [] netkey = {(byte) (0xFF & 0xaf), (byte) (0xFF & 0xc3), 0x27, 0x0e, (byte) (0xFF & 0xda), (byte) (0xFF & 0x88), 0x02, (byte) (0xFF & 0xf7), 0x2c, 0x1e, 0x53, 0x24, 0x38, (byte) (0xFF & 0xa9), 0x79, (byte) (0xFF & 0xeb)};
 //    //AFC3270EDA8802F72C1E532438A979EB mesh controller net key
 
-    private byte [] appkey = {0x44, (byte) (0xFF & 0xb5), 0x2b,  0x77, (byte) (0xFF & 0xaf), (byte) (0xFF & 0x8d), (byte) (0xFF & 0xc2), (byte) (0xFF & 0x2a),  0x04, (byte) (0xFF & 0x4b),0x35, 0x68, (byte) (0xFF & 0xce),0x60, (byte) (0xFF & 0xe3),0x10};
+
+    private byte [] appkey = {0x50,0x01, (byte) (0xFF & 0xae), 0x4a, (byte) (0xFF &  0xc6), (byte) (0xFF & 0xcb), (byte) (0xFF & 0x23), (byte) (0xFF & 0x0b), (byte) (0xFF & 0xb8), (byte) (0xFF & 0xff), (byte) (0xFF & 0x03),(byte) (0xFF & 0xd5), (byte) (0xFF & 0xec), (byte) (0xFF & 0x8c),(byte) (0xFF & 0xa9), (byte) (0xFF & 0xd4)};
+    //    private String appkey = "5001AE4AC6CB230BB8FF03D5EC8CA9D4"; h22 mesh rom 2
+
+//    private byte [] appkey = {0x44, (byte) (0xFF & 0xb5), 0x2b,  0x77, (byte) (0xFF & 0xaf), (byte) (0xFF & 0x8d), (byte) (0xFF & 0xc2), (byte) (0xFF & 0x2a),  0x04, (byte) (0xFF & 0x4b),0x35, 0x68, (byte) (0xFF & 0xce),0x60, (byte) (0xFF & 0xe3),0x10};
     //    private String appkey = "44B52B77AF8DC22A044B3568CE60E310"; nrf
 
 //    private byte [] appkey = {0x42, 0x2b, (byte) (0xFF & 0xf4), 0x56, (byte) (0xFF & 0xf5), (byte) (0xFF & 0xf3), (byte) (0xFF & 0xe6), (byte) (0xFF & 0xb7), (byte) (0xFF & 0xc5), (byte) (0xFF & 0xe9), 0x00, 0x6a, 0x02, 0x2b, 0x6d, (byte) (0xFF & 0x8e)};
@@ -219,6 +226,47 @@ public class BluetoothMesh {
     }
 
     public boolean sendGenericOnOffSetUnack(BleAdapterService adapter, byte [] dst , byte onoff){
+
+        if (!adapter.isConnected()) {
+            return false;
+        }
+
+        // PDU creation buffer
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        // access layer
+        byte [] access_payload;
+        byte [] opcode = { (byte) (0xFF & 0x82) , 0x03 };
+        try {
+            bos.write(opcode);
+            bos.write(onoff);
+            // TID
+            bos.write(new byte[]{01});
+            access_payload = bos.toByteArray();
+            // create obfuscated network PDU fields
+            byte [] obfuscated_network_pdu = deriveLowerLayers(access_payload, dst);
+            byte [] pdu = finaliseProxyPdu(obfuscated_network_pdu);
+
+            Log.d(Constants.TAG,"TTTT netkey: "+Utility.bytesToHex(netkey));
+            Log.d(Constants.TAG,"TTTT appkey: "+Utility.bytesToHex(appkey));
+//            Log.d(Constants.TAG,"TTTT appkeybytesnrf: "+new String (Utility.hexToBytes(nrfAppKey)));
+            Log.d(Constants.TAG,"TTTT iv_index: "+Utility.bytesToHex(iv_index));
+            Log.d(Constants.TAG,"TTTT encryption_key: "+Utility.bytesToHex(encryption_key));
+            Log.d(Constants.TAG,"TTTT privacy key: "+Utility.bytesToHex(privacy_key));
+            Log.d(Constants.TAG,"TTTT seq: "+Utility.bytesToHex(seq));
+
+            boolean result = adapter.writeCharacteristic(BleAdapterService.MESH_PROXY_SERVICE_UUID,
+                    BleAdapterService.MESH_PROXY_DATA_IN, pdu);
+            incrementSequenceNumber();
+            return result;
+        } catch (IOException e) {
+            e.printStackTrace();
+            incrementSequenceNumber();
+            return false;
+        }
+
+    }
+    public boolean sendVendorModelSetUnack(BleAdapterService adapter, byte [] dst , byte onoff){
 
         if (!adapter.isConnected()) {
             return false;
