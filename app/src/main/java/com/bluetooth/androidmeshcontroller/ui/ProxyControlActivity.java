@@ -174,8 +174,8 @@ public class ProxyControlActivity extends Activity {
             mesh = BluetoothMesh.getInstance();
             mesh.setContext(this);
 //            changeDst("C001");
-//            changeDst("0002");
-            changeDst("C000");
+            changeDst("0002");
+//            changeDst("C000");
             ((Button) ProxyControlActivity.this.findViewById(R.id.btn_all)).setTextColor(Color.RED);
             last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_all));
             showMsg("READY");
