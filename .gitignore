@@ -1,1 +1,7 @@
 /app/build
+/.gradle
+.gradle
+/.gradle/6.5
+/.gradle/buildOutputCleanup
+/.gradle/checksums
+/.gradle/vcs-1

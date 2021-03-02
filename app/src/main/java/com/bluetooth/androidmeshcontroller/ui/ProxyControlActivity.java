@@ -48,7 +48,7 @@ public class ProxyControlActivity extends Activity {
             if (bluetooth_le_adapter != null) {
                 boolean result = bluetooth_le_adapter.readCharacteristic(BleAdapterService.MESH_PROXY_SERVICE_UUID,
                         BleAdapterService.MESH_PROXY_DATA_OUT);
-                Log.d("Read Characteristics", "" + result);
+                Log.d(Constants.TAG, "Read Characteristics" + result);
             }
             readHandler.postDelayed(readRunnable, 1000);
         }
@@ -85,7 +85,7 @@ public class ProxyControlActivity extends Activity {
             byte[] b = null;
 
             bundle = msg.getData();
-            Log.d("mesh message handler", msg.toString());
+            Log.d(Constants.TAG,"mesh message handler => msg ="+ msg.toString());
             switch (msg.what) {
                 case BleAdapterService.MESSAGE:
                     String text = bundle.getString(BleAdapterService.PARCEL_TEXT);

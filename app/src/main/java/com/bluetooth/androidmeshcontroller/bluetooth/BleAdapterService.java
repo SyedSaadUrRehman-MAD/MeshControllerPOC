@@ -61,11 +61,11 @@ public class BleAdapterService extends Service {
     public static final String PARCEL_TEXT = "TEXT";
 
     // service uuids
-    public static String MESH_PROXY_SERVICE_UUID      = "00001828-0000-1000-8000-00805F9B34FB";
+    public static String MESH_PROXY_SERVICE_UUID = "00001828-0000-1000-8000-00805F9B34FB";
 
     // service characteristics
-    public static String MESH_PROXY_DATA_IN           = "00002ADD-0000-1000-8000-00805F9B34FB";
-    public static String MESH_PROXY_DATA_OUT          = "00002ADE-0000-1000-8000-00805F9B34FB";
+    public static String MESH_PROXY_DATA_IN = "00002ADD-0000-1000-8000-00805F9B34FB";
+    public static String MESH_PROXY_DATA_OUT = "00002ADE-0000-1000-8000-00805F9B34FB";
 
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805F9B34FB";
 
@@ -153,7 +153,7 @@ public class BleAdapterService extends Service {
         if (bluetooth_adapter == null || bluetooth_gatt == null) {
             return;
         }
-        Log.d(Constants.TAG,"Discovering GATT services");
+        Log.d(Constants.TAG, "Discovering GATT services");
         bluetooth_gatt.discoverServices();
     }
 
@@ -165,7 +165,7 @@ public class BleAdapterService extends Service {
 
     public boolean readCharacteristic(String serviceUuid,
                                       String characteristicUuid) {
-        Log.d(Constants.TAG,"readCharacteristic:"+characteristicUuid+" of " +serviceUuid);
+        Log.d(Constants.TAG, "readCharacteristic:" + characteristicUuid + " of " + serviceUuid);
         if (bluetooth_adapter == null || bluetooth_gatt == null) {
             sendConsoleMessage("readCharacteristic: bluetooth_adapter|bluetooth_gatt null");
             return false;
@@ -189,7 +189,7 @@ public class BleAdapterService extends Service {
     public boolean writeCharacteristic(String serviceUuid,
                                        String characteristicUuid, byte[] value) {
 
-        Log.d(Constants.TAG,"TTTT writeCharacteristic:"+characteristicUuid+" of " +serviceUuid+" bytes: "+ Utility.bytesToHex(value));
+        Log.d(Constants.TAG, "TTTT writeCharacteristic:" + characteristicUuid + " of " + serviceUuid + " bytes: " + Utility.bytesToHex(value));
         if (bluetooth_adapter == null || bluetooth_gatt == null) {
             sendConsoleMessage("writeCharacteristic: bluetooth_adapter|bluetooth_gatt null");
             return false;
@@ -245,7 +245,7 @@ public class BleAdapterService extends Service {
         return ok;
     }
 
-    public boolean requestMtu (int mtu) {
+    public boolean requestMtu(int mtu) {
         return bluetooth_gatt.requestMtu(mtu);
     }
 
@@ -265,7 +265,7 @@ public class BleAdapterService extends Service {
                 Message msg = Message.obtain(activity_handler, GATT_DISCONNECT);
                 msg.sendToTarget();
                 if (bluetooth_gatt != null) {
-                    Log.d(Constants.TAG,"Closing and destroying BluetoothGatt object");
+                    Log.d(Constants.TAG, "Closing and destroying BluetoothGatt object");
                     connected = false;
                     bluetooth_gatt.close();
                     bluetooth_gatt = null;
@@ -284,7 +284,7 @@ public class BleAdapterService extends Service {
                 msg.setData(bundle);
                 msg.sendToTarget();
             } else {
-                sendConsoleMessage("RSSI read err:"+status);
+                sendConsoleMessage("RSSI read err:" + status);
             }
         }
 
@@ -299,6 +299,7 @@ public class BleAdapterService extends Service {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt,
                                          BluetoothGattCharacteristic characteristic, int status) {
+            Log.d(Constants.TAG, "onCharacteristicRead " + status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Bundle bundle = new Bundle();
                 bundle.putString(PARCEL_CHARACTERISTIC_UUID, characteristic.getUuid()
@@ -310,8 +311,8 @@ public class BleAdapterService extends Service {
                 msg.setData(bundle);
                 msg.sendToTarget();
             } else {
-                Log.d(Constants.TAG, "failed to read characteristic:"+characteristic.getUuid().toString()+" of service "+characteristic.getService().getUuid().toString()+" : status="+status);
-                sendConsoleMessage("characteristic read err:"+status);
+                Log.d(Constants.TAG, "failed to read characteristic:" + characteristic.getUuid().toString() + " of service " + characteristic.getService().getUuid().toString() + " : status=" + status);
+                sendConsoleMessage("characteristic read err:" + status);
             }
         }
 
@@ -344,9 +345,9 @@ public class BleAdapterService extends Service {
             }
         }
 
-        public void onMtuChanged (BluetoothGatt gatt,
-                                  int mtu,
-                                  int status) {
+        public void onMtuChanged(BluetoothGatt gatt,
+                                 int mtu,
+                                 int status) {
             Log.d(Constants.TAG, "onCharacteristicWrite");
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Bundle bundle = new Bundle();
