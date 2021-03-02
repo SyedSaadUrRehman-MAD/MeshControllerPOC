@@ -40,6 +40,19 @@ public class ProxyControlActivity extends Activity {
     private Timer timer;
     private boolean connecting = false;
     private Button last_address_button;
+    private Handler readHandler = new Handler();
+    private Runnable readRunnable = new Runnable() {
+        @Override
+        public void run() {
+            readHandler.removeCallbacks(readRunnable);
+            if (bluetooth_le_adapter != null) {
+                boolean result = bluetooth_le_adapter.readCharacteristic(BleAdapterService.MESH_PROXY_SERVICE_UUID,
+                        BleAdapterService.MESH_PROXY_DATA_OUT);
+                Log.d("Read Characteristics", "" + result);
+            }
+            readHandler.postDelayed(readRunnable, 1000);
+        }
+    };
 
     class ClearMsgTask extends TimerTask {
         public void run() {
@@ -53,6 +66,7 @@ public class ProxyControlActivity extends Activity {
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             bluetooth_le_adapter = ((BleAdapterService.LocalBinder) service).getService();
             bluetooth_le_adapter.setActivityHandler(message_handler);
+            readHandler.post(readRunnable);
         }
 
         @Override
@@ -71,7 +85,7 @@ public class ProxyControlActivity extends Activity {
             byte[] b = null;
 
             bundle = msg.getData();
-
+            Log.d("mesh message handler", msg.toString());
             switch (msg.what) {
                 case BleAdapterService.MESSAGE:
                     String text = bundle.getString(BleAdapterService.PARCEL_TEXT);
@@ -134,7 +148,7 @@ public class ProxyControlActivity extends Activity {
 
                 case BleAdapterService.MTU_CHANGED:
                     int mtu = bundle.getInt(BleAdapterService.PARCEL_VALUE);
-                    showMsg("MTU changed to "+mtu);
+                    showMsg("MTU changed to " + mtu);
                     break;
             }
         }
@@ -181,7 +195,7 @@ public class ProxyControlActivity extends Activity {
             showMsg("READY");
         } catch (IOException e) {
             e.printStackTrace();
-            showMsg(Utility.htmlColorRed("FATAL ERROR: No BluetoothMesh instance:"+e.getMessage()));
+            showMsg(Utility.htmlColorRed("FATAL ERROR: No BluetoothMesh instance:" + e.getMessage()));
         }
     }
 
@@ -239,14 +253,14 @@ public class ProxyControlActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                ((TextView) findViewById(R.id.txt_dts)).setText("DST: 0x"+dst);
+                ((TextView) findViewById(R.id.txt_dts)).setText("DST: 0x" + dst);
             }
         });
     }
 
     public void onConnect(View view) {
         if (bluetooth_le_adapter != null) {
-            if (! connecting && !bluetooth_le_adapter.isConnected()) {
+            if (!connecting && !bluetooth_le_adapter.isConnected()) {
                 connecting = true;
                 ((Button) ProxyControlActivity.this.findViewById(R.id.btn_connect)).setEnabled(false);
                 showMsg("Connecting....");
@@ -268,48 +282,56 @@ public class ProxyControlActivity extends Activity {
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_c1));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onC2(View view) {
         changeDst("C022");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_c2));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onC3(View view) {
         changeDst("C023");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_c3));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onC4(View view) {
         changeDst("C024");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_c4));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onR1(View view) {
         changeDst("C011");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_r1));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onR2(View view) {
         changeDst("C012");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_r2));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onR3(View view) {
         changeDst("C013");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_r3));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onR4(View view) {
         changeDst("C014");
         last_address_button.setTextColor(Color.BLACK);
         last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_r4));
         last_address_button.setTextColor(Color.RED);
     }
+
     public void onAll(View view) {
         changeDst("C001");
         last_address_button.setTextColor(Color.BLACK);
@@ -318,51 +340,58 @@ public class ProxyControlActivity extends Activity {
     }
 
     public void onOn(View view) {
-        showMsg("sending generic on off set unack (1)",5);
-        mesh.sendGenericOnOffSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),(byte) 1);
+        showMsg("sending generic on off set unack (1)", 5);
+        mesh.sendGenericOnOffSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), (byte) 1);
     }
 
     public void onVendorModel(View view) {
-        showMsg("sending Vendor Model Trigger set unack (1)",5);
-        mesh.sendVendorModelSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),(byte) 1);
+        showMsg("sending Vendor Model Trigger set unack (1)", 5);
+        mesh.sendVendorModelSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), (byte) 1);
     }
 
     public void onOff(View view) {
-        showMsg("sending generic on off set unack (0)",5);
-        mesh.sendGenericOnOffSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),(byte) 0);
+        showMsg("sending generic on off set unack (0)", 5);
+        mesh.sendGenericOnOffSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), (byte) 0);
     }
 
     public void onWhite(View view) {
-        showMsg("sending HSL set set unack (white)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.WHITE],Constants.S[Constants.WHITE],Constants.L[Constants.WHITE]);
+        showMsg("sending HSL set set unack (white)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.WHITE], Constants.S[Constants.WHITE], Constants.L[Constants.WHITE]);
     }
+
     public void onRed(View view) {
-        showMsg("sending HSL set set unack (red)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.RED],Constants.S[Constants.RED],Constants.L[Constants.RED]);
+        showMsg("sending HSL set set unack (red)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.RED], Constants.S[Constants.RED], Constants.L[Constants.RED]);
     }
+
     public void onGreen(View view) {
-        showMsg("sending HSL set set unack (green)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.GREEN],Constants.S[Constants.GREEN],Constants.L[Constants.GREEN]);
+        showMsg("sending HSL set set unack (green)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.GREEN], Constants.S[Constants.GREEN], Constants.L[Constants.GREEN]);
     }
+
     public void onBlue(View view) {
-        showMsg("sending HSL set set unack (blue)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.BLUE],Constants.S[Constants.BLUE],Constants.L[Constants.BLUE]);
+        showMsg("sending HSL set set unack (blue)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.BLUE], Constants.S[Constants.BLUE], Constants.L[Constants.BLUE]);
     }
+
     public void onYellow(View view) {
-        showMsg("sending HSL set set unack (yellow)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.YELLOW],Constants.S[Constants.YELLOW],Constants.L[Constants.YELLOW]);
+        showMsg("sending HSL set set unack (yellow)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.YELLOW], Constants.S[Constants.YELLOW], Constants.L[Constants.YELLOW]);
     }
+
     public void onCyan(View view) {
-        showMsg("sending HSL set set unack (cyan)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.CYAN],Constants.S[Constants.CYAN],Constants.L[Constants.CYAN]);
+        showMsg("sending HSL set set unack (cyan)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.CYAN], Constants.S[Constants.CYAN], Constants.L[Constants.CYAN]);
     }
+
     public void onMagenta(View view) {
-        showMsg("sending HSL set set unack (magenta)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.MAGENTA],Constants.S[Constants.MAGENTA],Constants.L[Constants.MAGENTA]);
+        showMsg("sending HSL set set unack (magenta)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.MAGENTA], Constants.S[Constants.MAGENTA], Constants.L[Constants.MAGENTA]);
     }
+
     public void onBlack(View view) {
-        showMsg("sending HSL set set unack (black)",5);
-        mesh.sendLightHslSetUnack(bluetooth_le_adapter,Utility.hexToBytes(destination_address),Constants.H[Constants.BLACK],Constants.S[Constants.BLACK],Constants.L[Constants.BLACK]);
+        showMsg("sending HSL set set unack (black)", 5);
+        mesh.sendLightHslSetUnack(bluetooth_le_adapter, Utility.hexToBytes(destination_address), Constants.H[Constants.BLACK], Constants.S[Constants.BLACK], Constants.L[Constants.BLACK]);
     }
 
     public String byteArrayAsHexString(byte[] bytes) {
