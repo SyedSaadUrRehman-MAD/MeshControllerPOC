@@ -234,15 +234,17 @@ public class BleAdapterService extends Service {
         bluetooth_gatt.setCharacteristicNotification(gattChar, enabled);
         // Enable remote notifications
         descriptor = gattChar.getDescriptor(UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
+        if(descriptor != null) {
+            if (enabled) {
+                descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
+            } else {
+                descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+            }
+            boolean ok = bluetooth_gatt.writeDescriptor(descriptor);
 
-        if (enabled) {
-            descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
-        } else {
-            descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+            return ok;
         }
-        boolean ok = bluetooth_gatt.writeDescriptor(descriptor);
-
-        return ok;
+        else return false;
     }
 
     public boolean requestMtu(int mtu) {

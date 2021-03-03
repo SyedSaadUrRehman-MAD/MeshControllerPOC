@@ -59,6 +59,8 @@ public class ProxyControlActivity extends Activity {
         {
             bluetooth_le_adapter.setIndicationsState(BleAdapterService.MESH_PROXY_SERVICE_UUID,
                     BleAdapterService.MESH_PROXY_DATA_IN,true);
+            bluetooth_le_adapter.setIndicationsState(BleAdapterService.MESH_PROXY_SERVICE_UUID,
+                    BleAdapterService.MESH_PROXY_DATA_OUT,true);
             readHandler.post(readRunnable);
         }
     }
