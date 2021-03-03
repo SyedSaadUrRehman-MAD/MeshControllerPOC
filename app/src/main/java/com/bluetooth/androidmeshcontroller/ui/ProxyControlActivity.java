@@ -50,9 +50,18 @@ public class ProxyControlActivity extends Activity {
                         BleAdapterService.MESH_PROXY_DATA_OUT);
                 Log.d(Constants.TAG, "Read Characteristics" + result);
             }
-            readHandler.postDelayed(readRunnable, 1000);
+//            readHandler.postDelayed(readRunnable, 1000);
         }
     };
+
+    public void subscribeNoti(View view) {
+        if(bluetooth_le_adapter != null)
+        {
+            bluetooth_le_adapter.setIndicationsState(BleAdapterService.MESH_PROXY_SERVICE_UUID,
+                    BleAdapterService.MESH_PROXY_DATA_IN,true);
+            readHandler.post(readRunnable);
+        }
+    }
 
     class ClearMsgTask extends TimerTask {
         public void run() {
@@ -66,7 +75,6 @@ public class ProxyControlActivity extends Activity {
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             bluetooth_le_adapter = ((BleAdapterService.LocalBinder) service).getService();
             bluetooth_le_adapter.setActivityHandler(message_handler);
-            readHandler.post(readRunnable);
         }
 
         @Override

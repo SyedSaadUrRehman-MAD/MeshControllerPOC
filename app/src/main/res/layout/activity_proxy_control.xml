@@ -255,7 +255,7 @@
         android:text="@android:string/ok"
         android:textAlignment="center"
         android:textSize="12sp"
-        app:layout_constraintBottom_toTopOf="@+id/btn_connect"
+        app:layout_constraintBottom_toTopOf="@+id/btn_vendor"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
@@ -263,26 +263,34 @@
         android:id="@+id/btn_connect"
         android:layout_width="380dp"
         android:layout_height="50dp"
-        android:layout_marginStart="16dp"
         android:layout_marginBottom="15dp"
         android:onClick="onConnect"
         android:text="CONNECT"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
 
     <Button
         android:id="@+id/btn_vendor"
         android:layout_width="380dp"
         android:layout_height="50dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="15dp"
         android:onClick="onVendorModel"
         android:text="send vendor model trigger"
-        app:layout_constraintBottom_toTopOf="@id/txt_msg"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintBottom_toTopOf="@id/btn_connect"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintHorizontal_bias="0.5" />
+
+    <Button
+        android:id="@+id/btn_subscribe_notifications"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:onClick="subscribeNoti"
+        android:text="subscribe notification"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
