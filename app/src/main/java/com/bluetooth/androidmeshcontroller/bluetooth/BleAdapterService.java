@@ -16,14 +16,21 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
 import android.util.Log;
+import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 
 import com.bluetooth.androidmeshcontroller.Constants;
 import com.bluetooth.androidmeshcontroller.Utility;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.bluetooth.androidmeshcontroller.Constants.TAG;
 
 public class BleAdapterService extends Service {
 
@@ -68,6 +75,97 @@ public class BleAdapterService extends Service {
     public static String MESH_PROXY_DATA_OUT = "00002ADE-0000-1000-8000-00805F9B34FB";
 
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805F9B34FB";
+
+    public void enableDataOutNotificationAndIndication() {
+        if(bluetooth_gatt != null)
+        {
+            final BluetoothGattService meshProxyService = bluetooth_gatt.getService(UUID.fromString(MESH_PROXY_SERVICE_UUID));
+            if (meshProxyService != null) {
+                BluetoothGattCharacteristic mMeshProxyDataOutCharacteristic = meshProxyService.getCharacteristic(UUID.fromString(MESH_PROXY_DATA_OUT));
+                internalEnableIndications(bluetooth_gatt, mMeshProxyDataOutCharacteristic);
+                setNotificationState(MESH_PROXY_SERVICE_UUID,MESH_PROXY_DATA_OUT,true);
+            }else
+                Log.d(TAG,"meshProxyService is null");
+        }else
+            Log.d(TAG,"Bluetooth_gatt is null");
+    }
+
+    private boolean internalEnableIndications(final BluetoothGatt mBluetoothGatt, final BluetoothGattCharacteristic characteristic) {
+        final BluetoothGatt gatt = mBluetoothGatt;
+        if (gatt == null || characteristic == null)
+            return false;
+
+        final BluetoothGattDescriptor descriptor = getCccd(characteristic, BluetoothGattCharacteristic.PROPERTY_INDICATE);
+        if (descriptor != null) {
+            Log.d(TAG, "gatt.setCharacteristicNotification(" + characteristic.getUuid() + ", true)");
+            gatt.setCharacteristicNotification(characteristic, true);
+
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
+            Log.d(TAG, "Enabling indications for " + characteristic.getUuid());
+            Log.d(TAG, "gatt.writeDescriptor(" + UUID.fromString(BleAdapterService.CLIENT_CHARACTERISTIC_CONFIG) + ", value=0x02-00)");
+            return internalWriteDescriptorWorkaround(gatt,descriptor);
+        }
+        return false;
+    }
+
+    public boolean setNotificationState(String serviceUuid, String characteristicUuid, boolean enabled) {
+
+        if (bluetooth_adapter == null || bluetooth_gatt == null) {
+            sendConsoleMessage("setIndicationsState: bluetooth_adapter|bluetooth_gatt null");
+            return false;
+        }
+
+        BluetoothGattService gattService = bluetooth_gatt.getService(java.util.UUID.fromString(serviceUuid));
+        if (gattService == null) {
+            sendConsoleMessage("setIndicationsState: gattService null");
+            return false;
+        }
+        BluetoothGattCharacteristic gattChar = gattService.getCharacteristic(java.util.UUID.fromString(characteristicUuid));
+        if (gattChar == null) {
+            sendConsoleMessage("setIndicationsState: gattChar null");
+            return false;
+        }
+
+        bluetooth_gatt.setCharacteristicNotification(gattChar, enabled);
+        // Enable remote notifications
+        descriptor = gattChar.getDescriptor(UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
+        if(descriptor != null) {
+            if (enabled) {
+                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            } else {
+                descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+            }
+            boolean ok = bluetooth_gatt.writeDescriptor(descriptor);
+
+            return ok;
+        }
+        else return false;
+    }
+
+    private boolean internalWriteDescriptorWorkaround(final BluetoothGatt mBluetoothGatt,final BluetoothGattDescriptor descriptor) {
+        final BluetoothGatt gatt = mBluetoothGatt;
+        if (gatt == null || descriptor == null)
+            return false;
+
+        final BluetoothGattCharacteristic parentCharacteristic = descriptor.getCharacteristic();
+        final int originalWriteType = parentCharacteristic.getWriteType();
+        parentCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        final boolean result = gatt.writeDescriptor(descriptor);
+        parentCharacteristic.setWriteType(originalWriteType);
+        return result;
+    }
+    private static BluetoothGattDescriptor getCccd(@Nullable final BluetoothGattCharacteristic characteristic,
+                                                   final int requiredProperty) {
+        if (characteristic == null)
+            return null;
+
+        // Check characteristic property
+        final int properties = characteristic.getProperties();
+        if ((properties & requiredProperty) == 0)
+            return null;
+
+        return characteristic.getDescriptor(UUID.fromString(BleAdapterService.CLIENT_CHARACTERISTIC_CONFIG));
+    }
 
     public class LocalBinder extends Binder {
         public BleAdapterService getService() {
@@ -153,7 +251,7 @@ public class BleAdapterService extends Service {
         if (bluetooth_adapter == null || bluetooth_gatt == null) {
             return;
         }
-        Log.d(Constants.TAG, "Discovering GATT services");
+        Log.d(TAG, "Discovering GATT services");
         bluetooth_gatt.discoverServices();
     }
 
@@ -165,7 +263,7 @@ public class BleAdapterService extends Service {
 
     public boolean readCharacteristic(String serviceUuid,
                                       String characteristicUuid) {
-        Log.d(Constants.TAG, "readCharacteristic:" + characteristicUuid + " of " + serviceUuid);
+        Log.d(TAG, "readCharacteristic:" + characteristicUuid + " of " + serviceUuid);
         if (bluetooth_adapter == null || bluetooth_gatt == null) {
             sendConsoleMessage("readCharacteristic: bluetooth_adapter|bluetooth_gatt null");
             return false;
@@ -189,7 +287,7 @@ public class BleAdapterService extends Service {
     public boolean writeCharacteristic(String serviceUuid,
                                        String characteristicUuid, byte[] value) {
 
-        Log.d(Constants.TAG, "TTTT writeCharacteristic:" + characteristicUuid + " of " + serviceUuid + " bytes: " + Utility.bytesToHex(value));
+        Log.d(TAG, "TTTT writeCharacteristic:" + characteristicUuid + " of " + serviceUuid + " bytes: " + Utility.bytesToHex(value));
         if (bluetooth_adapter == null || bluetooth_gatt == null) {
             sendConsoleMessage("writeCharacteristic: bluetooth_adapter|bluetooth_gatt null");
             return false;
@@ -213,40 +311,6 @@ public class BleAdapterService extends Service {
 
     }
 
-    public boolean setIndicationsState(String serviceUuid, String characteristicUuid, boolean enabled) {
-
-        if (bluetooth_adapter == null || bluetooth_gatt == null) {
-            sendConsoleMessage("setIndicationsState: bluetooth_adapter|bluetooth_gatt null");
-            return false;
-        }
-
-        BluetoothGattService gattService = bluetooth_gatt.getService(java.util.UUID.fromString(serviceUuid));
-        if (gattService == null) {
-            sendConsoleMessage("setIndicationsState: gattService null");
-            return false;
-        }
-        BluetoothGattCharacteristic gattChar = gattService.getCharacteristic(java.util.UUID.fromString(characteristicUuid));
-        if (gattChar == null) {
-            sendConsoleMessage("setIndicationsState: gattChar null");
-            return false;
-        }
-
-        bluetooth_gatt.setCharacteristicNotification(gattChar, enabled);
-        // Enable remote notifications
-        descriptor = gattChar.getDescriptor(UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
-        if(descriptor != null) {
-            if (enabled) {
-                descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
-            } else {
-                descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
-            }
-            boolean ok = bluetooth_gatt.writeDescriptor(descriptor);
-
-            return ok;
-        }
-        else return false;
-    }
-
     public boolean requestMtu(int mtu) {
         return bluetooth_gatt.requestMtu(mtu);
     }
@@ -256,18 +320,18 @@ public class BleAdapterService extends Service {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status,
                                             int newState) {
-            Log.d(Constants.TAG, "onConnectionStateChange: status=" + status);
+            Log.d(TAG, "onConnectionStateChange: status=" + status);
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.d(Constants.TAG, "onConnectionStateChange: CONNECTED");
+                Log.d(TAG, "onConnectionStateChange: CONNECTED");
                 connected = true;
                 Message msg = Message.obtain(activity_handler, GATT_CONNECTED);
                 msg.sendToTarget();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.d(Constants.TAG, "onConnectionStateChange: DISCONNECTED");
+                Log.d(TAG, "onConnectionStateChange: DISCONNECTED");
                 Message msg = Message.obtain(activity_handler, GATT_DISCONNECT);
                 msg.sendToTarget();
                 if (bluetooth_gatt != null) {
-                    Log.d(Constants.TAG, "Closing and destroying BluetoothGatt object");
+                    Log.d(TAG, "Closing and destroying BluetoothGatt object");
                     connected = false;
                     bluetooth_gatt.close();
                     bluetooth_gatt = null;
@@ -301,7 +365,7 @@ public class BleAdapterService extends Service {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt,
                                          BluetoothGattCharacteristic characteristic, int status) {
-            Log.d(Constants.TAG, "onCharacteristicRead " + status);
+            Log.d(TAG, "onCharacteristicRead " + status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Bundle bundle = new Bundle();
                 bundle.putString(PARCEL_CHARACTERISTIC_UUID, characteristic.getUuid()
@@ -313,7 +377,7 @@ public class BleAdapterService extends Service {
                 msg.setData(bundle);
                 msg.sendToTarget();
             } else {
-                Log.d(Constants.TAG, "failed to read characteristic:" + characteristic.getUuid().toString() + " of service " + characteristic.getService().getUuid().toString() + " : status=" + status);
+                Log.d(TAG, "failed to read characteristic:" + characteristic.getUuid().toString() + " of service " + characteristic.getService().getUuid().toString() + " : status=" + status);
                 sendConsoleMessage("characteristic read err:" + status);
             }
         }
@@ -321,6 +385,13 @@ public class BleAdapterService extends Service {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic) {
+            Log.d("acm","onCharacteristicChanged");
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(),"On CHarr changed",Toast.LENGTH_LONG).show();
+                }
+            });
             Bundle bundle = new Bundle();
             bundle.putString(PARCEL_CHARACTERISTIC_UUID, characteristic.getUuid().toString());
             bundle.putString(PARCEL_SERVICE_UUID, characteristic.getService().getUuid().toString());
@@ -333,7 +404,7 @@ public class BleAdapterService extends Service {
 
         public void onCharacteristicWrite(BluetoothGatt gatt,
                                           BluetoothGattCharacteristic characteristic, int status) {
-            Log.d(Constants.TAG, "onCharacteristicWrite");
+            Log.d(TAG, "onCharacteristicWrite");
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Bundle bundle = new Bundle();
                 bundle.putString(PARCEL_CHARACTERISTIC_UUID, characteristic.getUuid().toString());
@@ -350,7 +421,7 @@ public class BleAdapterService extends Service {
         public void onMtuChanged(BluetoothGatt gatt,
                                  int mtu,
                                  int status) {
-            Log.d(Constants.TAG, "onCharacteristicWrite");
+            Log.d(TAG, "onCharacteristicWrite");
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Bundle bundle = new Bundle();
                 bundle.putInt(PARCEL_VALUE, mtu);
@@ -362,5 +433,4 @@ public class BleAdapterService extends Service {
             }
         }
     };
-
 }

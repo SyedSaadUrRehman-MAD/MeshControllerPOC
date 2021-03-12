@@ -2,7 +2,9 @@ package com.bluetooth.androidmeshcontroller.ui;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -17,6 +19,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.bluetooth.androidmeshcontroller.Constants;
 import com.bluetooth.androidmeshcontroller.R;
 import com.bluetooth.androidmeshcontroller.Utility;
@@ -27,6 +32,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.UUID;
+
+import static com.bluetooth.androidmeshcontroller.Constants.TAG;
 
 public class ProxyControlActivity extends Activity {
     public static final String EXTRA_ID = "id";
@@ -41,27 +49,52 @@ public class ProxyControlActivity extends Activity {
     private boolean connecting = false;
     private Button last_address_button;
     private Handler readHandler = new Handler();
+    private boolean hasWriteNoResponseProperty(@NonNull final BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
+    }
+
+    private boolean hasIndicateProperty(@NonNull final BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0;
+    }
+
+    private boolean hasNotifyProperty(@NonNull final BluetoothGattCharacteristic characteristic) {
+        return (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+    }
     private Runnable readRunnable = new Runnable() {
         @Override
         public void run() {
             readHandler.removeCallbacks(readRunnable);
             if (bluetooth_le_adapter != null) {
-                boolean result = bluetooth_le_adapter.readCharacteristic(BleAdapterService.MESH_PROXY_SERVICE_UUID,
-                        BleAdapterService.MESH_PROXY_DATA_OUT);
-                Log.d(Constants.TAG, "Read Characteristics" + result);
+                List<BluetoothGattService> slist = bluetooth_le_adapter.getSupportedGattServices();
+                for (BluetoothGattService svc : slist) {
+                    for (BluetoothGattCharacteristic characteristic : svc.getCharacteristics()) {
+                        if(characteristic.getUuid().toString().toUpperCase().equalsIgnoreCase(BleAdapterService.MESH_PROXY_DATA_OUT)) {
+                            Log.d(TAG, svc.getUuid().toString().toUpperCase() + "\n service has DATA_OUT_CHARR => " + characteristic.getUuid().toString().toUpperCase() +
+                                    "\n hasWriteNoResponseProperty => " + hasWriteNoResponseProperty(characteristic) +
+                                    "\n hasIndicateProperty => " + hasIndicateProperty(characteristic) +
+                                    "\n hasNotifyProperty => " + hasNotifyProperty(characteristic));
+                            // This callback will be called each time a notification is received.
+//                            final DataReceivedCallback onDataReceived = (device, data) ->
+//                                    mCallbacks.onDataReceived(device, getMaximumPacketSize(), data.getValue());
+//                            setNotificationCallback(characteristic).with(onDataReceived);
+//                            enableNotifications(characteristic).enqueue();
+                        }
+                    }
+                }
+//                boolean result = bluetooth_le_adapter.readCharacteristic(BleAdapterService.MESH_PROXY_SERVICE_UUID,
+//                        BleAdapterService.MESH_PROXY_DATA_OUT);
+//                boolean result2 = bluetooth_le_adapter.readCharacteristic(BleAdapterService.MESH_PROXY_SERVICE_UUID,
+//                        BleAdapterService.MESH_PROXY_DATA_IN);
+//                Log.d(Constants.TAG, "Read Characteristics OUT" + result);
+//                Log.d(Constants.TAG, "Read Characteristics IN" + result2);
             }
-//            readHandler.postDelayed(readRunnable, 1000);
+            readHandler.postDelayed(readRunnable, 1000);
         }
     };
 
     public void subscribeNoti(View view) {
-        if(bluetooth_le_adapter != null)
-        {
-            bluetooth_le_adapter.setIndicationsState(BleAdapterService.MESH_PROXY_SERVICE_UUID,
-                    BleAdapterService.MESH_PROXY_DATA_IN,true);
-            bluetooth_le_adapter.setIndicationsState(BleAdapterService.MESH_PROXY_SERVICE_UUID,
-                    BleAdapterService.MESH_PROXY_DATA_OUT,true);
-            readHandler.post(readRunnable);
+        if (bluetooth_le_adapter != null) {
+            bluetooth_le_adapter.enableDataOutNotificationAndIndication();
         }
     }
 
@@ -95,7 +128,7 @@ public class ProxyControlActivity extends Activity {
             byte[] b = null;
 
             bundle = msg.getData();
-            Log.d(Constants.TAG,"mesh message handler => msg ="+ msg.toString());
+            Log.d(TAG, "mesh message handler => msg =" + msg.toString());
             switch (msg.what) {
                 case BleAdapterService.MESSAGE:
                     String text = bundle.getString(BleAdapterService.PARCEL_TEXT);
@@ -125,7 +158,7 @@ public class ProxyControlActivity extends Activity {
                     boolean mesh_proxy_data_out_present = false;
 
                     for (BluetoothGattService svc : slist) {
-                        Log.d(Constants.TAG, "UUID=" + svc.getUuid().toString().toUpperCase() + " INSTANCE=" + svc.getInstanceId());
+                        Log.d(TAG, "UUID=" + svc.getUuid().toString().toUpperCase() + " INSTANCE=" + svc.getInstanceId());
                         if (svc.getUuid().toString().equalsIgnoreCase(BleAdapterService.MESH_PROXY_SERVICE_UUID)) {
                             mesh_proxy_service_present = true;
                             for (BluetoothGattCharacteristic characteristic : svc.getCharacteristics()) {
@@ -153,7 +186,12 @@ public class ProxyControlActivity extends Activity {
 
                 case BleAdapterService.GATT_CHARACTERISTIC_WRITTEN:
                     bundle = msg.getData();
-                    Log.d(Constants.TAG, "Service=" + bundle.get(BleAdapterService.PARCEL_SERVICE_UUID).toString().toUpperCase() + " Characteristic=" + bundle.get(BleAdapterService.PARCEL_CHARACTERISTIC_UUID).toString().toUpperCase());
+                    Log.d(TAG, "Service=" + bundle.get(BleAdapterService.PARCEL_SERVICE_UUID).toString().toUpperCase() + " Characteristic=" + bundle.get(BleAdapterService.PARCEL_CHARACTERISTIC_UUID).toString().toUpperCase());
+                    break;
+                case BleAdapterService.GATT_CHARACTERISTIC_READ:
+                    bundle = msg.getData();
+                    Log.d(TAG,bundle.toString());
+                    Log.d(TAG, "Reading Service=" + bundle.get(BleAdapterService.PARCEL_SERVICE_UUID).toString().toUpperCase() + " Characteristic=" + bundle.get(BleAdapterService.PARCEL_CHARACTERISTIC_UUID).toString().toUpperCase());
                     break;
 
                 case BleAdapterService.MTU_CHANGED:
@@ -165,7 +203,7 @@ public class ProxyControlActivity extends Activity {
     };
 
     public void onBackPressed() {
-        Log.d(Constants.TAG, "onBackPressed");
+        Log.d(TAG, "onBackPressed");
         back_requested = true;
         if (bluetooth_le_adapter.isConnected()) {
             try {
@@ -198,8 +236,8 @@ public class ProxyControlActivity extends Activity {
             mesh = BluetoothMesh.getInstance();
             mesh.setContext(this);
 //            changeDst("C001");
-            changeDst("0002");
-//            changeDst("C000");
+//            changeDst("0002");
+            changeDst("C000");
             ((Button) ProxyControlActivity.this.findViewById(R.id.btn_all)).setTextColor(Color.RED);
             last_address_button = ((Button) ProxyControlActivity.this.findViewById(R.id.btn_all));
             showMsg("READY");
@@ -244,7 +282,7 @@ public class ProxyControlActivity extends Activity {
     }
 
     private void showMsg(final String msg) {
-        Log.d(Constants.TAG, msg);
+        Log.d(TAG, msg);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
